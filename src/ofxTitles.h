@@ -15,13 +15,13 @@ class ofxTitles
 {
 public:
 	ofxTitles();
+	~ofxTitles();
 
 	void          add(std::string _text, int _number, int _start_time, int _end_time);
+	void          add(std::string _text, int _number, int _start_time, int _end_time, int _x, int _y);
 	void          bindVideo(ofVideoPlayer* vid_player);
 	void          clear(void);
 	void          draw(void);
-	void          draw(float x, float y);
-	void          draw(float x, float y, float w, float h, float percent=0.9);
 	bool          empty(void);
 	void          firstFrame(void);
 	bool          isPlaying(void);
@@ -49,20 +49,30 @@ private:
 		int         start_time;
 		int         end_time;
 		int         duration;
+		ofPoint		position;
+
 	};
 
 	typedef ofPtr<Title> TitlePtr;
 
 	struct classcomp {
 		bool operator() (const TitlePtr& lhs, const TitlePtr& rhs) const
-		{return lhs->start_time < rhs->start_time;}
+		{
+			if(lhs->start_time != rhs->start_time) {
+				return  lhs->start_time < rhs->start_time;
+			} else {
+				return lhs->duration < rhs->duration;
+			}
+		}
 	};
 
-	typedef std::set<TitlePtr, classcomp> Titles;
+
+	typedef std::multiset<TitlePtr, classcomp> Titles;
 	
 	void                 _checkPlayState(void);
 	bool                 _advancePlayHead(void);
 	void                 _draw(std::string text, float x, float y);
+	void                 _draw(Titles::iterator *tmp_play_head);
 	void                 _updateDisplayState(void);
 						 
 	PlaybackState        playback_state;

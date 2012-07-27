@@ -11,18 +11,19 @@ void TitlesApp::setup(){
    mVid.play();
 
    mTitles.bindVideo(&mVid);
+   // titles added without positioning appear at the bottom of the screen
    mTitles.add("Subtitle 1", 1, 1000, 3000);
+   mTitles.add("Subtitle 2", 2, 3500, 5500, 10 + mVid.width / 2, 10 + mVid.height * 0.9);
    
-
    // subtitles are automatically sorted by their start
    // time so they can be added in any order
-   //mTitles.add("Subtitle 6", 6, 9500, 11500);
-   //mTitles.add("Subtitle 5", 5, 9000, 8500);  // this won't display
-   //mTitles.add("Subtitle 3", 3, 6000, 8000);
-   //mTitles.add("Subtitle 2", 7, 3500, 5500);
-   //mTitles.add("Subtitle 4", 4, 8500, 8500);  // this won't display
+   mTitles.add("Subtitle 4", 4, 9500, 11500);
+   mTitles.add("Subtitle 3", 3, 6000, 8000);
 
-   mTitles.loadFont("Inconsolata.ttf", 32);
+   // multiple titles can be displayed at once.
+   mTitles.add("Subtitle 5", 2, 3500, 5500);
+
+   mTitles.loadFont("Inconsolata.ttf", 16);
    mTitles.setLoopState(OF_LOOP_NORMAL);
    mTitles.play();
 }
@@ -34,20 +35,14 @@ void TitlesApp::update(){
 
 //--------------------------------------------------------------
 void TitlesApp::draw(){
+	ofBackground(ofColor::gray);
 	mVid.draw(10, 10);
-	// draw inside a bounding box - good for subtitles
-	mTitles.draw(10, 10, mVid.width, mVid.height);
+	
+	mTitles.draw();
 
-	// you can adjust the vertical layout using a percentage (0.0 - 1.0)
-	// default is 0.9
-	mVid.draw(10,  mVid.height + 20);
-	mTitles.draw(10, mVid.height + 20, mVid.width, mVid.height, 0.5);
-
-	// shaky title, absolutely positioned
-	int x = (rand() % 5) + 20;
-	int y = (rand() % 5)  + (mVid.height * 2) + 80;
 	mTitles.setDisplayNumber(true);
-	mTitles.draw(x, y);
+	//mTitles.draw(x, y);
+	//mTitles.draw();
 	mTitles.setDisplayNumber(false);
 }
 

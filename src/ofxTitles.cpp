@@ -26,10 +26,21 @@ ofxTitles::ofxTitles()
 	  frame_timestamp(ofGetElapsedTimeMillis()),
 	  playback_state(TITLE_STOPPED)
 {
-	ofAddListener(ofEvents.update, this, &ofxTitles::update);
+	ofAddListener(ofEvents().update, this, &ofxTitles::update);
 }
 
+ofxTitles::~ofxTitles() 
+{
+	ofRemoveListener(ofEvents().update, this, &ofxTitles::update);
+}
+
+// if no coordinates provided, use default values.
 void ofxTitles::add(std::string _text, int _number, int _start_time, int _end_time)
+{
+	add(_text, _number, _start_time, _end_time, ofGetWidth() / 2, ofGetHeight() * 0.9);
+}
+
+void ofxTitles::add(std::string _text, int _number, int _start_time, int _end_time, int _x, int _y)
 {
 	if (_start_time > _end_time) {
 		ofLog(OF_LOG_ERROR, "Start time should come before end time for title number: " + ofToString(_number));
@@ -42,6 +53,7 @@ void ofxTitles::add(std::string _text, int _number, int _start_time, int _end_ti
 	sub->start_time = _start_time;
 	sub->end_time   = _end_time;
 	sub->duration   = _end_time - _start_time;
+	sub->position.set(_x, _y);
 
 	// stick it in the buffer
 	titles.insert(sub);
@@ -60,47 +72,28 @@ void ofxTitles::clear(void)
 	titles.clear();
 }
 
+
 void ofxTitles::draw(void)
 {
-	draw(0, 0);
-}
-
-void ofxTitles::draw(float x, float y)
-{
 	// can't draw if there's nuthin' ta draw
 	if (playback_state != TITLE_DISPLAYING)
 		return;
-
+	
 	ofPushStyle();
-	ofSetHexColor(0x00ff00);
-	if (font.isLoaded())
-		font.drawString((*play_head)->text, x, y);
-	else
-		ofDrawBitmapString((*play_head)->text, x, y);
-	ofPopStyle();
-}
+	
+	Titles::iterator tmp_play_head = Titles::iterator(play_head);
+	int time_elapsed = ofGetElapsedTimeMillis() - base_timestamp;
 
-void ofxTitles::draw(float x, float y, float w, float h, float percent)
-{
-	// can't draw if there's nuthin' ta draw
-	if (playback_state != TITLE_DISPLAYING)
-		return;
+	while(tmp_play_head != titles.end()) {
+		// current subtitle 
+		if((*tmp_play_head)->start_time >= time_elapsed) {
+			break;
+		} else if((*tmp_play_head)->start_time < time_elapsed && 
+		(*tmp_play_head)->end_time > time_elapsed) {
+			_draw(&tmp_play_head);
+		} 
 
-	ofPushStyle();
-	ofSetHexColor(0x00ff00);
-
-	std::string text;
-	if (display_number)
-		text = ofToString((*play_head)->number) + ":" + (*play_head)->text;
-	else
-		text = (*play_head)->text;
-
-	if (font.isLoaded()) {
-		x = x + ((w - font.stringWidth(text)) * 0.5);
-		y = y + (h * percent) + (font.stringHeight(text) * 0.5);
-		font.drawString(text, x, y);
-	} else {
-		ofDrawBitmapString(text, x, y);
+		++tmp_play_head;
 	}
 	ofPopStyle();
 }
@@ -108,6 +101,37 @@ void ofxTitles::draw(float x, float y, float w, float h, float percent)
 void ofxTitles::_draw(std::string text, float x, float y)
 {
 	// YOU WERE THINKING ABOUT DRYING THIS UP
+}
+
+void ofxTitles::_draw(Titles::iterator *tmp_play_head)
+{
+	std::string text;
+
+	if (display_number)
+		text = ofToString((**tmp_play_head)->number) + ":" + (**tmp_play_head)->text;
+	else
+		text = (**tmp_play_head)->text;
+
+	int x = (**tmp_play_head)->position.x;
+	int y = (**tmp_play_head)->position.y;
+		
+	// note: different subtitles might have different fonts/sizes. 
+	// Figure out the best way to take this in to account, because 
+	// reloading fonts for each subtitle draw is a 20fps-ish performance hit.
+	if (font.isLoaded()) {
+		ofRectangle rect = font.getStringBoundingBox(text, x, y);	
+		x -= rect.width / 2;
+		ofSetColor(0,0,0);
+
+		// the text looks about centered with this positioning, 
+		// but can be adjusted as desired.
+		ofRect(x - 10, y - rect.height * 1.1, rect.width + 20, rect.height * 1.4);
+		ofSetHexColor(0xffffff);
+		font.drawString(text, x, y);
+
+	} else {
+		ofDrawBitmapString(text, x, y);
+	}
 }
 
 bool ofxTitles::empty(void)
@@ -159,8 +183,17 @@ bool ofxTitles::_advancePlayHead(void)
 	}
 		
 	// advance the play head to the next frame
-	++play_head;
-
+	int time_left;
+	do {
+		++play_head;
+		// copied from _updateDisplayState()
+		if(play_head != titles.end()) {
+			time_left = (base_timestamp + (*play_head)->end_time) - ofGetElapsedTimeMillis();
+		} else {
+			break;
+		}
+	} while(time_left <= 0);
+		
 	// see if we're at the end of the play_buffer
 	if (play_head == titles.end()) {
 		switch(loop_type) {
@@ -265,6 +298,7 @@ void ofxTitles::update(ofEventArgs& args)
 		break;
 	case TITLE_DISPLAYING:
 		_updateDisplayState();
+		//_updateCurrentPlayVec();
 		break;
 	case TITLE_WAITING:
 		_checkPlayState();
